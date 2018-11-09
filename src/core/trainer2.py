@@ -44,27 +44,30 @@ def decode(y):
 # plt.close()
 
 
-# model = keras.Sequential([
-#     keras.layers.Flatten(input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
-#     # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
-#     # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
-#     # keras.layers.MaxPooling2D((2, 2)),
-#     keras.layers.Dense(128, activation=tf.nn.relu),
-#     keras.layers.Dropout(0.25),
-#     keras.layers.Dense(CHARACTERS_LENGTH, activation=tf.nn.softmax)
-# ])
+model = keras.Sequential([
+    keras.layers.Flatten(input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
+    # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
+    # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
+    # keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Dense(128, activation=tf.nn.relu),
+    keras.layers.Dropout(0.25),
+    keras.layers.Dense(CHARACTERS_LENGTH, activation=tf.nn.softmax)
+])
 
-input_tensor = layers.Input((IMAGE_HEIGHT, IMAGE_WIDTH, 3))
+input_tensor = layers.Input((60, 170, 3))
 x = input_tensor
-# for i in range(4):
-#     x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
-#     x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
-#     x = layers.MaxPooling2D((2, 2))(x)
+# x = layers.Convolution2D(32 * 2 ** 1, 3, 3, activation='relu')(x)
+# x = layers.Convolution2D(32 * 2 ** 2, 3, 3, activation='relu')(x)
 
-x = layers.Flatten()(x)
-x = layers.Dropout(0.25)(x)
+for i in range(2):
+    x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
+    x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
+    # x = layers.MaxPooling2D((2, 2))(x)
 
-x = [layers.Dense(CAPTCHA_LENGTH, activation='softmax', name='c%d' % (i + 1))(x) for i in range(4)]
+# x = layers.Flatten()(x)
+# x = layers.Dropout(0.25)(x)
+#
+# x = [layers.Dense(CAPTCHA_LENGTH, activation='softmax', name='c%d' % (i + 1))(x) for i in range(4)]
 
 # model = models.Model(input=input_tensor, output=x)
 
