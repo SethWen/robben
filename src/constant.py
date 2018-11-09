@@ -16,4 +16,4 @@ CAPTCHA_LENGTH = 4
 IMAGE_WIDTH = 160
 IMAGE_HEIGHT = 60
 
-IMAGE_PATH = '/data/gen'
+IMAGE_PATH = '/home/shawn/WorkSpace/shawn/robben/trainset'

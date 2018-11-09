@@ -103,21 +103,37 @@ def train_through_cnn():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
+        epoch = 0
         step = 0
-        while True:
-            batch_x, batch_y = get_next_batch(64)
+        gen = data_generator.list_files(IMAGE_PATH)
+        while True:  # epoch
+            print('0000000000000000000000>>>', epoch)
+            try:
+                batch_x, batch_y = data_generator.get_batch_image(gen, 128)
+            except StopIteration as e:
+                epoch += 1
+                gen = data_generator.list_files(IMAGE_PATH)
+                batch_x, batch_y = data_generator.get_batch_image(gen, 128)
+                pass
+
             _, loss_ = sess.run([optimizer, loss], feed_dict={X: batch_x, Y: batch_y, keep_prob: 0.75})
-            print(step, 'loss========', loss_)
+            print(step, 'loss=', loss_)
 
             # 每100 step计算一次准确率
             if step % 100 == 0:
-                batch_x_test, batch_y_test = get_next_batch(100)
+                try:
+                    batch_x_test, batch_y_test = data_generator.get_batch_image(gen, 128)
+                except StopIteration as e:
+                    epoch += 1
+                    gen = data_generator.list_files(IMAGE_PATH)
+                    batch_x_test, batch_y_test = data_generator.get_batch_image(gen, 128)
+                    pass
+
                 acc = sess.run(accuracy, feed_dict={X: batch_x_test, Y: batch_y_test, keep_prob: 1.})
                 print(step, 'acc=========================', acc)
                 # 如果准确率大于50%,保存模型,完成训练
                 if acc > 0.5:
-                    saver.save(sess, "crack_capcha.model", global_step=step)
-                    break
+                    saver.save(sess, "./first.model", global_step=step)
 
             step += 1
 
@@ -130,7 +146,7 @@ def predict(captcha_image):
     with tf.Session() as sess:
         saver.restore(sess, tf.train.latest_checkpoint('.'))
 
-        predict = tf.argmax(tf.reshape(output, [-1, CAPTCHA_LENGTH * CHARACTERS_LENGTH]), 2)
+        predict = tf.argmax(tf.reshape(output, [-1, CAPTCHA_LENGTH, CHARACTERS_LENGTH]), 2)
         text_list = sess.run(predict, feed_dict={X: [captcha_image], keep_prob: 1})
 
         text = text_list[0].tolist()
@@ -140,9 +156,3 @@ def predict(captcha_image):
             vector[i * CHARACTERS_LENGTH + n] = 1
             i += 1
         return text_util.vec2text(vector)
-
-# text, image = gen_captcha_text_and_image()
-# image = convert2gray(image)
-# image = image.flatten() / 255
-# predict_text = crack_captcha(image)
-# print("正确: {}  预测: {}".format(text, predict_text))

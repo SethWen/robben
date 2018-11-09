@@ -22,28 +22,34 @@ def list_files(file_dir):
     root, dirs, files = next(os.walk(file_dir))
     # print(root)  # 当前目录路径
     # print(dirs)  # 当前路径下所有子目录
-    # print(files)  # 当前路径下所有非目录子文件
-    return root, files
+    # print(len(files))  # 当前路径下所有非目录子文件
+    for f in files:
+        image = image_util.img2nparray(os.path.join(root, f))
+        image = image_util.convert2gray(image)
+        image = image.flatten() / 255  # (image.flatten()-128)/128  mean为0
+
+        start = f.find('_') + 1
+        end = f.rfind('.')
+        label = f[start:end]
+        yield image, label
 
 
-def get_batch_image(batch=64):
+def get_batch_image(img_gen, batch=64):
     """
     generate data from images
+    :param img_gen:
     :param batch:
     :return:
     """
-    root, files = list_files(constant.IMAGE_PATH)
     batch_x = np.zeros([batch, constant.IMAGE_WIDTH * constant.IMAGE_HEIGHT])
     batch_y = np.zeros([batch, constant.CAPTCHA_LENGTH * constant.CHARACTERS_LENGTH])
 
-    for f in files:
-        for i in range(batch):
-            image = image_util.img2nparray(os.path.join(root, f))
-            image = image_util.convert2gray(image)
-            label = f.replace('./', '').replace('.png', '')
-            batch_x[i, :] = image.flatten() / 255  # (image.flatten()-128)/128  mean为0
-            batch_y[i, :] = text_util.text2vec(label)
-        yield batch_x, batch_y
+    for i in range(batch):
+        image, label = next(img_gen)
+        batch_x[i, :] = image
+        batch_y[i, :] = text_util.text2vec(label)
+
+    return batch_x, batch_y
 
 
 def random_captcha_text(char_set=constant.CHARACTERS, captcha_size=4):
@@ -69,19 +75,27 @@ def gen_captcha_text_and_image():
 
     captcha_image = Image.open(captcha)
     captcha_image = np.array(captcha_image)
+    print(captcha_text)
     return captcha_text, captcha_image
 
 
-if __name__ == '__main__':
-    # j = 0
-    # for x, y in get_batch_image(2):
-    #     print('-------------------------' * 5)
-    #     print('x.shape = ', x.shape)
-    #     print('y.shape = ', y.shape)
-    #     j += 1
-    #     if j == 10:
-    #         break
+def test():
+    epoch = 0
+    step = 0
+    gen = list_files(constant.IMAGE_PATH)
+    while epoch < 5:  # epoch
+        try:
+            data = get_batch_image(gen, 128)
+        except StopIteration as e:
+            epoch += 1
+            gen = list_files(constant.IMAGE_PATH)
+            data = get_batch_image(gen, 128)
+            pass
 
-    # print(random_captcha_text())
-    # print(gen_captcha_text_and_image()[1].shape)
+        print(data[0].shape, data[1].shape)  # (128, 9600) (128, 16)
+        step += 1
+
+
+if __name__ == '__main__':
+    test()
     pass

@@ -105,3 +105,8 @@ venv.bak/
 
 # JetBrain
 .idea
+
+# MC
+model
+*.png
+*.jpg
