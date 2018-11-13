@@ -12,7 +12,7 @@ from captcha.image import ImageCaptcha
 import matplotlib.pyplot as plt
 from IPython.display import Image
 import tensorflow as tf
-from tensorflow.keras import utils, models, layers
+from tensorflow.keras import utils, models, layers, Sequential
 
 from src.constant import *
 
@@ -44,14 +44,14 @@ def decode(y):
 # plt.close()
 
 
-model = keras.Sequential([
-    keras.layers.Flatten(input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
+model = Sequential([
+    layers.Flatten(input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
     # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
     # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
     # keras.layers.MaxPooling2D((2, 2)),
-    keras.layers.Dense(128, activation=tf.nn.relu),
-    keras.layers.Dropout(0.25),
-    keras.layers.Dense(CHARACTERS_LENGTH, activation=tf.nn.softmax)
+    layers.Dense(128, activation=tf.nn.relu),
+    layers.Dropout(0.25),
+    layers.Dense(CHARACTERS_LENGTH, activation=tf.nn.softmax)
 ])
 
 input_tensor = layers.Input((60, 170, 3))
