@@ -12,7 +12,7 @@ from captcha.image import ImageCaptcha
 import matplotlib.pyplot as plt
 from IPython.display import Image
 import tensorflow as tf
-from tensorflow.keras import utils, models, layers, Sequential
+from tensorflow.keras import utils, models, layers, Sequential, Model, callbacks
 
 from src.constant import *
 
@@ -24,7 +24,7 @@ def gen(batch_size=32):
     while True:
         for i in range(batch_size):
             random_str = ''.join([random.choice(CHARACTERS) for j in range(4)])
-            print(random_str)
+            # print(random_str)
             X[i] = generator.generate_image(random_str)
             for j, ch in enumerate(random_str):
                 y[j][i, :] = 0
@@ -44,40 +44,98 @@ def decode(y):
 # plt.close()
 
 
-model = Sequential([
-    layers.Flatten(input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
-    # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
-    # keras.layers.Convolution2D(32 * 2 ** 1, 3, 3, activation=tf.nn.relu),
-    # keras.layers.MaxPooling2D((2, 2)),
-    layers.Dense(128, activation=tf.nn.relu),
-    layers.Dropout(0.25),
-    layers.Dense(CHARACTERS_LENGTH, activation=tf.nn.softmax)
-])
-
-input_tensor = layers.Input((60, 170, 3))
+input_tensor = layers.Input((60, 160, 3))
 x = input_tensor
-# x = layers.Convolution2D(32 * 2 ** 1, 3, 3, activation='relu')(x)
-# x = layers.Convolution2D(32 * 2 ** 2, 3, 3, activation='relu')(x)
 
-for i in range(2):
-    x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
-    x = layers.Convolution2D(32 * 2 ** i, 3, 3, activation='relu')(x)
-    # x = layers.MaxPooling2D((2, 2))(x)
+for i in range(3):
+    print(i, '---' * 30)
+    x = layers.Convolution2D(32 * 2 ** i, (3, 3), activation='relu')(x)
+    x = layers.Convolution2D(32 * 2 ** i, (3, 3), activation='relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
 
-# x = layers.Flatten()(x)
-# x = layers.Dropout(0.25)(x)
-#
-# x = [layers.Dense(CAPTCHA_LENGTH, activation='softmax', name='c%d' % (i + 1))(x) for i in range(4)]
+x = layers.Flatten()(x)
+x = layers.Dropout(0.25)(x)
 
-# model = models.Model(input=input_tensor, output=x)
+x = [layers.Dense(CAPTCHA_LENGTH, activation='softmax', name='c%d' % (i + 1))(x) for i in range(4)]
 
-# model.compile(loss='categorical_crossentropy',
-#               optimizer='adadelta',
-#               metrics=['accuracy'])
+model = Model(inputs=input_tensor, outputs=x)
 
-# model.fit_generator(gen(), samples_per_epoch=51200, nb_epoch=5,
-#                     nb_worker=2, pickle_safe=True,
-#                     validation_data=gen(), nb_val_samples=1280)
+model.compile(loss='categorical_crossentropy',
+              optimizer='adadelta',
+              metrics=['accuracy'])
+
+my_callbacks = [
+    # Interrupt training if `val_loss` stops improving for over 2 epochs
+    callbacks.EarlyStopping(patience=2, monitor='val_loss'),
+    # Write TensorBoard logs to `./logs` directory
+    callbacks.TensorBoard(log_dir='./log'),
+    # callbacks.ModelCheckpoint(),
+]
+
+
+class MyCallback(callbacks.Callback):
+
+    def __init__(self):
+        super().__init__()
+
+    def set_params(self, params):
+        super().set_params(params)
+
+    def set_model(self, model):
+        super().set_model(model)
+
+    def on_epoch_begin(self, epoch, logs=None):
+        super().on_epoch_begin(epoch, logs)
+
+    def on_epoch_end(self, epoch, logs=None):
+        super().on_epoch_end(epoch, logs)
+        self.model.save_weights('./weights/my_model')
+
+    def on_batch_begin(self, batch, logs=None):
+        super().on_batch_begin(batch, logs)
+
+    def on_batch_end(self, batch, logs=None):
+        super().on_batch_end(batch, logs)
+
+    def on_train_begin(self, logs=None):
+        super().on_train_begin(logs)
+
+    def on_train_end(self, logs=None):
+        super().on_train_end(logs)
+
+
+def evaluate(model, batch_num=10):
+    batch_acc = 0
+    generator = gen()
+    for i in range(batch_num):
+        [X_test, y_test, _, _], _ = next(generator)
+        y_pred = base_model.predict(X_test)
+        shape = y_pred[:, 2:, :].shape
+        ctc_decode = K.ctc_decode(y_pred[:, 2:, :],
+                                  input_length=np.ones(shape[0]) * shape[1])[0][0]
+        out = K.get_value(ctc_decode)[:, :4]
+        if out.shape[1] == 4:
+            batch_acc += ((y_test == out).sum(axis=1) == 4).mean()
+    return batch_acc / batch_num
+
+
+class Evaluate(callbacks.Callback):
+
+    def __init__(self):
+        super().__init__()
+        self.accs = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        acc = evaluate(base_model) * 100
+        self.accs.append(acc)
+        print('acc: %f%%' % acc)
+
+
+evaluator = Evaluate()
+
+
+# model.fit_generator(generator=gen(), steps_per_epoch=100, epochs=5, callbacks=my_callbacks,
+#                     validation_data=gen(), validation_steps=20, workers=2)
 
 
 def show_network():
@@ -86,7 +144,7 @@ def show_network():
 
 
 if __name__ == '__main__':
-    # show_network()
+    show_network()
     # X, y = next(gen(1))
     # plt.imshow(X[0])
     # plt.title(decode(y))
