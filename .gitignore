@@ -111,3 +111,4 @@ model
 *.png
 *.jpg
 log/
+weight/
